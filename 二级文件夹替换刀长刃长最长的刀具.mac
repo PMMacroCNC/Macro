@@ -1,0 +1,49 @@
+//2019/11/09	xy	复制刀具前，判断刀具是否存在
+//2019/11/08	xy	创建
+STRING LIST Folders={}
+//获得二级文件夹
+FOREACH f IN get_folders('Toolpath') {
+	if size(tokens($f,'\')) ==3 {
+    	int i=add_Last(Folders,f)	
+	}
+}
+//删除重复项目
+INT i=remove_duplicates(Folders)
+PRINT PAR "Folders"
+//判断刀长
+FOREACH Folder in $Folders {
+    //取最大刃长
+    real MaxL=max(extract(folder(folder),'tool.length'))
+    //取最长刀长
+    real MaxOverhang = max(extract(folder(folder),'tool.overhang'))
+    PRINT $MaxL
+    print $MaxOverhang
+    string list TNList=extract(folder(folder),'tool.name')
+    if size($TNList) <=1 {
+    	continue
+    }
+    string ToolName=extract(folder(folder),'tool.name')[0]
+	
+	//复制前，判断刀具是否存在
+	string tn=tokens($ToolName,'_-')[0]
+    string NewName=$tn+"-刀"+string(int($MaxOverhang)+1)
+    //刀具直径小于4MM，才应用刃长
+    if entity('Tool',$ToolName).diameter<4 {
+    	$NewName=$tn+"-刀"+string(int($MaxOverhang)+1)+"刃"+string(int($MaxL)+1)
+    }
+	
+	if not entity_exists('Tool',$NewName) {
+		copy Tool $ToolName
+		PRINT $ToolName
+		ACTIVATE Tool #
+		EDIT TOOL ; LENGTH $MaxL
+		EDIT TOOL ; OVERHANG $MaxOverhang		
+		RENAME TOOL ; $NewName	
+	}
+
+
+    FOREACH TH in folder(Folder) {
+    	ACTIVATE Tool $NewName
+        EDIT TOOLPATH $TH.NAME REPLACE_TOOL ;
+    }   
+}
